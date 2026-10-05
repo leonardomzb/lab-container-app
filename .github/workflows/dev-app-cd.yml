@@ -14,9 +14,9 @@ permissions:
   contents: read
 
 env:
-  ACR_NAME: 'acrgaleria'
-  RESOURCE_GROUP: 'rg-acr-galeria'
+  ACR_NAME: 'acrgaleria'  
   ACR_SERVER_NAME: 'acrgaleria-byhrhhhwefffcqen.azurecr.io'
+  ACA_RESOURCE_GROUP: 'rg-galeria-arte'
 
 jobs:
   build-backend:
@@ -87,12 +87,12 @@ jobs:
         run: |
           az containerapp update \
             --name aca-backend-dev-galeria-arte \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --resource-group ${{ env.ACA_RESOURCE_GROUP }} \
             --image ${{ env.ACR_SERVER_NAME }}/galeria-backend:${{ github.sha }}
 
       - name: Deploy Frontend to Container App
         run: |
           az containerapp update \
             --name aca-frontend-dev-galeria-arte \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --resource-group ${{ env.ACA_RESOURCE_GROUP }} \
             --image ${{ env.ACR_SERVER_NAME }}/galeria-frontend:${{ github.sha }}
