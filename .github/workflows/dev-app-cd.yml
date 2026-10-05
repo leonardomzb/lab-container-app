@@ -86,13 +86,13 @@ jobs:
       - name: Deploy Backend to Container App
         run: |
           az containerapp update \
-            --name aca-backend-dev-galeria \
+            --name aca-backend-dev-galeria-arte \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR_SERVER_NAME }}/galeria-backend:${{ github.sha }}
 
       - name: Deploy Frontend to Container App
         run: |
           az containerapp update \
-            --name aca-frontend-dev-galeria \
+            --name aca-frontend-dev-galeria-arte \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR_SERVER_NAME }}/galeria-frontend:${{ github.sha }}
