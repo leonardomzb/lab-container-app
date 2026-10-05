@@ -1,0 +1,57 @@
+services:
+  # BASE DE DATOS
+  base_datos:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./db-init:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} --dbname=${POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. BACKEND
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      base_datos:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: base_datos
+      DB_USER: ${POSTGRES_USER}
+      DB_NAME: ${POSTGRES_DB}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      #CORS_ORIGIN: ${CORS_ORIGIN}
+      DB_SSL: false
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:3000/health > /dev/null || exit 1" ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+
+  # 3. FRONTEND
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      BACKEND_URL: ${BACKEND_URL}
+
+volumes:
+  postgres_data:

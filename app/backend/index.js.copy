@@ -1,0 +1,110 @@
+const express = require('express');
+const { Pool } = require('pg');
+const client = require('prom-client');
+
+const app = express();
+const port = 3000;
+
+// ==========================================
+// 1. FUNCIÓN HELPER PARA LOGS EN JSON (DevOps)
+// ==========================================
+function logEvent(level, message, metadata = {}) {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    level, // INFO, WARN, ERROR
+    service: 'backend',
+    message,
+    ...metadata
+  };
+  // Imprime JSON en stdout para que Azure Monitor o Loki lo lean fácilmente
+  console.log(JSON.stringify(logEntry));
+}
+
+// ==========================================
+// 2. MIDDLEWARE DE REGISTRO DE PETICIONES HTTP
+// ==========================================
+app.use((req, res, next) => {
+  const start = Date.now();
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const level = res.statusCode >= 500 ? 'ERROR' : res.statusCode >= 400 ? 'WARN' : 'INFO';
+
+    logEvent(level, `HTTP ${req.method} ${req.url}`, {
+      method: req.method,
+      url: req.originalUrl,
+      status: res.statusCode,
+      durationMs: duration,
+      ip: req.ip
+    });
+  });
+
+  next();
+});
+
+// Colección de métricas por defecto de Prometheus
+const collectDefaultMetrics = client.collectDefaultMetrics;
+collectDefaultMetrics({ timeout: 5000 });
+
+// Endpoint /metrics exclusivo para Prometheus
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
+});
+
+// ==========================================
+// 3. CONFIGURACIÓN DE CORS CONFIGURABLE (DevOps)
+// ==========================================
+// Lee la variable del Docker Compose; si no existe, usa '*' como respaldo para emergencias
+const allowedOrigin = process.env.CORS_ORIGIN || '*';
+
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", allowedOrigin);
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  next();
+});
+
+// ==========================================
+// 4. CONEXIÓN A BASE DE DATOS
+// ==========================================
+const pool = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: process.env.POSTGRES_PORT,
+  ssl: { rejectUnauthorized: false },
+});
+
+// Endpoint Pintura
+app.get('/pintura/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM cuadros WHERE id = \$1', [id]);
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      logEvent('WARN', `Intento de acceso a cuadro inexistente ID: ${id}`, { id });
+      res.status(404).json({ error: "Cuadro no encontrado" });
+    }
+  } catch (err) {
+    logEvent('ERROR', `Error al consultar la base de datos para cuadro ID: ${id}`, { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint Healthcheck
+app.get('/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.status(200).json({ status: 'UP', database: 'CONNECTED' });
+  } catch (err) {
+    logEvent('ERROR', 'Healthcheck falló: Base de datos no disponible', { error: err.message });
+    res.status(500).json({ status: 'DOWN', error: err.message });
+  }
+});
+
+app.listen(port, () => {
+  logEvent('INFO', `Backend corriendo en http://localhost:${port}`, { port });
+});
