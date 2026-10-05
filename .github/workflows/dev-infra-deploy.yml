@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'terraform/**'
-      - '.github/workflows/infra-deploy.yml'
+      - '.github/workflows/dev-infra-deploy.yml'
   pull_request:
     branches:
       - main
