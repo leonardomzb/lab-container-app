@@ -16,6 +16,7 @@ permissions:
 env:
   ACR_NAME: 'acrgaleria'
   RESOURCE_GROUP: 'rg-acr-galeria'
+  ACR_SERVER_NAME: 'acrgaleria-byhrhhhwefffcqen.azurecr.io'
 
 jobs:
   build-backend:
@@ -37,7 +38,7 @@ jobs:
 
       - name: Build and Push Backend Image
         run: |
-          ACR_SERVER="${{ env.ACR_NAME }}.azurecr.io"
+          ACR_SERVER=${{ env.ACR_SERVER_NAME }}
           docker build -t $ACR_SERVER/galeria-backend:${{ github.sha }} -t $ACR_SERVER/galeria-backend:latest ./app/backend
           docker push $ACR_SERVER/galeria-backend:${{ github.sha }}
           docker push $ACR_SERVER/galeria-backend:latest
@@ -61,7 +62,7 @@ jobs:
 
       - name: Build and Push Frontend Image
         run: |
-          ACR_SERVER="${{ env.ACR_NAME }}.azurecr.io"
+          ACR_SERVER=${{ env.ACR_SERVER_NAME }}
           docker build -t $ACR_SERVER/galeria-frontend:${{ github.sha }} -t $ACR_SERVER/galeria-frontend:latest ./app/frontend
           docker push $ACR_SERVER/galeria-frontend:${{ github.sha }}
           docker push $ACR_SERVER/galeria-frontend:latest
@@ -87,11 +88,11 @@ jobs:
           az containerapp update \
             --name aca-backend-dev-galeria \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.ACR_NAME }}.azurecr.io/galeria-backend:${{ github.sha }}
+            --image ${{ env.ACR_SERVER_NAME }}/galeria-backend:${{ github.sha }}
 
       - name: Deploy Frontend to Container App
         run: |
           az containerapp update \
             --name aca-frontend-dev-galeria \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.ACR_NAME }}.azurecr.io/galeria-frontend:${{ github.sha }}
+            --image ${{ env.ACR_SERVER_NAME }}/galeria-frontend:${{ github.sha }}
