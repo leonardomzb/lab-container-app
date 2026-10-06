@@ -21,4 +21,4 @@ bd-pass = "db-password"
 # Grupo de recursos de ACR
 rg-acr-name = "rg-acr-galeria"
 # Nombre de ACR
-acr         = "acrgaleria"
+acr = "acrgaleria"
